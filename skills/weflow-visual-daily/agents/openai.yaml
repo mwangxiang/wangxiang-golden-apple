@@ -1,0 +1,7 @@
+interface:
+  display_name: "WeFlow Visual Daily"
+  short_description: "Turn WeFlow group records into stable avatar and essence daily poster assets."
+  default_prompt: "Use $weflow-visual-daily to produce a WeChat group avatar poster and community essence daily poster from WeFlow records."
+
+policy:
+  allow_implicit_invocation: true

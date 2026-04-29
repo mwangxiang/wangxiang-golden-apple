@@ -1,0 +1,5 @@
+{
+  "baseUrl": "http://127.0.0.1:5031",
+  "token": "PUT_YOUR_LOCAL_TOKEN_HERE",
+  "timezone": "Asia/Shanghai"
+}

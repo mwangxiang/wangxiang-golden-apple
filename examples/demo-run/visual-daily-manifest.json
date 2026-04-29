@@ -1,0 +1,21 @@
+{
+  "schema": "weflow-visual-daily-manifest/v1",
+  "groupName": "示例社群",
+  "date": "2026-04-29",
+  "mode": {
+    "avatarPoster": "avatar-trait-linked image-model",
+    "essencePoster": "image-model"
+  },
+  "stats": {
+    "totalMessages": 88,
+    "textMessages": 70,
+    "emojiMessages": 18,
+    "activeMembers": 10
+  },
+  "outputs": {
+    "generated": []
+  },
+  "notes": [
+    "This is a redacted sample manifest. Real chat logs, member names, avatars, and machine paths are intentionally excluded."
+  ]
+}

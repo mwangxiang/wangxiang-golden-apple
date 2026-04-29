@@ -1,0 +1,9 @@
+{
+  "styleProfile": "reference-style-qianqian-20260426",
+  "memberOverrides": {
+    "风中梧桐": {
+      "direction": "gentle silver-mask mentor",
+      "avoid": ["mecha", "Ultraman-like armor", "combat suit", "weapon-like props"]
+    }
+  }
+}

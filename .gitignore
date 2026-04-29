@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# local config and secrets
+.env
+*.env
+*.local.json
+config.local.json
+WeFlow-config.json
+*.token
+*.key
+
+# raw private data
+raw/
+reports/raw/
+reports/visual-daily/
+reports/**/avatar-reference/
+private-results/
+avatar-cache/
+*.db
+*.sqlite
+*.sqlite3
+
+# local/generated working dirs
+tmp/
+.cache/
+.codex/
+.claude/
+generated_images/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

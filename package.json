@@ -1,0 +1,12 @@
+{
+  "name": "wangxiang-golden-apple",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reusable WeFlow community visual daily workflow, skills, scripts, and redacted examples.",
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "help": "node weflow-cli.mjs help",
+    "validate:langtotem": "node scripts/validate-run.mjs --run-dir ./private-results/weflow-visual-daily-20260427-20260504-langtotem-career-1 --require-download false"
+  }
+}
