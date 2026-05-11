@@ -57,18 +57,22 @@ node scripts\weflow-json-to-file.mjs --out "$raw\messages.json" -- messages --na
 node scripts\weflow-json-to-file.mjs --out "$raw\members_counts.json" -- group-members --name "目标群名" --counts
 node scripts\build-sbti-image-prompt.mjs --group "目标群名" --date YYYY-MM-DD --messages "$raw\messages.json" --members "$raw\members_counts.json" --out-dir "$visual"
 node scripts\prepare-sbti-avatar-references.mjs --persona "$visual\sbti-persona-data.json" --members "$raw\members_counts.json" --out-dir "$visual\avatar-reference"
+powershell -ExecutionPolicy Bypass -File scripts\build-avatar-reference-sheet.ps1 -AvatarDir "$visual\avatar-reference" -Out "$visual\avatar-reference\top10-avatar-reference-sheet.png"
+node scripts\sbti-avatar-pipeline.mjs prepare --run-dir "$visual" --group "目标群名" --date YYYY-MM-DD --interval "YYYY-MM-DD 全天" --messages "$raw\messages.json" --members "$raw\members_counts.json"
 ```
 
 必须检查：
 
 - `avatar-reference\top10-avatar-reference.json`
 - `avatar-reference\top10-avatar-reference-sheet.png`
-- `gpt-image-2-sbti-poster-prompt.md`
+- `image-model-pack\gpt-image-2-sbti-template-filled.md`
+- `image-model-pack\READY_FOR_IMAGE_GEN.md`
+- `generated\*_content_daily.png`
 
 生图模型输出 PNG 后：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\copy-generated-image.ps1 -Source "生成图路径.png" -RunDir "$visual" -Name "image-model-avatar-poster.png" -DownloadName "可分享文件名.png"
+node scripts\sbti-avatar-pipeline.mjs finalize --run-dir "$visual" --source-generated-image "C:\Users\YOU\.codex\generated_images\...\image.png" --name "image-model-avatar-poster.png" --download-name "可分享文件名.png"
 node scripts\validate-run.mjs --run-dir "$visual" --require-download true
 ```
 
@@ -79,6 +83,7 @@ node scripts\validate-run.mjs --run-dir "$visual" --require-download true
 - 如果工具不能上传图片，必须使用 `avatar-trait-linked`：把每位成员头像的主体、颜色、姿态、背景、符号写进提示词。
 - deterministic fallback 可以作为兜底或测试图，但不能冒充生图模型成品。
 - HTML 截图不是生图模型成果。
+- 同时要求头像画像和日报时，必须交付两张独立 PNG：`contentDaily` 和 `imageModelFinal`，不能合并成一张图。
 
 ## 优先排查
 

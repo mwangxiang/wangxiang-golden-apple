@@ -12,6 +12,8 @@ Typical deliverables:
 - prompt pack and run manifest
 - downloadable PNG copies
 
+If the user asks for both an avatar/SBTI poster and a daily report, produce two separate PNG deliverables. Do not embed the daily report into the avatar poster.
+
 ## Source Of Truth
 
 Operational root:
@@ -31,6 +33,50 @@ Known handoff:
 ```text
 reports\visual-daily\HANDOFF_2026-04-28_weflow-sbti-avatar-poster.md
 ```
+
+## SBTI Avatar Unique Entrypoint
+
+For SBTI/avatar portrait posters, use the pipeline entrypoint. Do not call local poster renderers directly as final output.
+
+Prepare the image-model job:
+
+```powershell
+node scripts\sbti-avatar-pipeline.mjs prepare `
+  --run-dir "reports\visual-daily\RUN" `
+  --group "Group Name" `
+  --date "YYYY-MM-DD" `
+  --interval "HH:mm-HH:mm"
+```
+
+This creates:
+
+```text
+image-model-pack\gpt-image-2-sbti-template-filled.md
+image-model-pack\READY_FOR_IMAGE_GEN.md
+image-model-pack\reference-conditioned-job.json
+generated\*_content_daily.png
+downloads\weflow-visual-daily-RUN\*_content_daily.png
+```
+
+The content daily PNG created in `prepare` is already a separate deliverable. The avatar/SBTI poster is still pending until the image-model result is finalized from `.codex\generated_images`.
+
+After a real generated image exists under `.codex\generated_images`, finalize:
+
+```powershell
+node scripts\sbti-avatar-pipeline.mjs finalize `
+  --run-dir "reports\visual-daily\RUN" `
+  --source-generated-image "C:\Users\YOU\.codex\generated_images\...\image.png" `
+  --name "final-sbti-avatar.png" `
+  --download-name "shareable-file-name.png"
+```
+
+Then validate:
+
+```powershell
+node scripts\sbti-avatar-pipeline.mjs validate --run-dir "reports\visual-daily\RUN"
+```
+
+If any stage fails, stop and report the failed check. Local PowerShell, HTML, canvas, vector, or deterministic renderers are draft/fallback only and must not be presented as final avatar portrait output.
 
 ## Safe JSON Export
 
@@ -148,6 +194,14 @@ node scripts\build-gpt-image-sbti-poster-prompt.mjs `
 
 If the current image tool cannot attach the sheet, manually or programmatically add avatar visual trait descriptions to the prompt before generation.
 
+For SBTI/avatar portrait posters, the prompt file that matters for reruns is always:
+
+```text
+reports\visual-daily\RUN\image-model-pack\gpt-image-2-sbti-template-filled.md
+```
+
+Versioned drafts are allowed during iteration, but the accepted prompt must be copied back to this canonical filename before validation and delivery.
+
 ## Final Delivery
 
 Final image-model files are first saved under Codex generated images. Copy them out immediately.
@@ -171,6 +225,25 @@ D:\weflow-tools\downloads\weflow-visual-daily-RUN\下载用中文名.png
 ```
 
 The final response must surface both paths directly.
+
+Before the final response, update `visual-daily-manifest.json` with `requiresAvatarRemix`, `requiresSbtiTemplate`, `intent.avatarRemix`, `intent.sbtiPoster`, `outputMode`, `outputs.project/download`, and `imageModelFinal`.
+
+For avatar-plus-daily requests, final validation must leave two different output records in the manifest:
+
+```text
+contentDaily.project/download    = community content daily poster
+imageModelFinal.project/download = SBTI/avatar portrait poster
+```
+
+If these point to the same PNG, the job failed the deliverable contract.
+
+Then run:
+
+```powershell
+node scripts\validate-run.mjs --run-dir "reports\visual-daily\RUN" --require-download true
+```
+
+If this fails, the poster is not reproducible enough to call final.
 
 ## Learning Community Avatar Portrait Daily
 
@@ -198,7 +271,7 @@ Encoding bugs are a known recurring failure mode.
 - Prefer ASCII identifiers and syntax in scripts; keep Chinese inside strings only.
 - Validate prompt files with Node, not `Get-Content`, because PowerShell display encoding can show mojibake even when the file is valid UTF-8.
 
-## 2026-04-29 MagicAI Test Fixes
+## 2026-04-29 Test Fixes
 
 Observed during a real local test run:
 

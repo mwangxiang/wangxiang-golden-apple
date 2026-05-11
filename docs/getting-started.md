@@ -12,8 +12,10 @@
   -> 在 WeFlow 里打开 HTTP API
   -> 把 baseUrl/token 填进 config.local.json
   -> 用 weflow-cli.mjs 读到群消息
-  -> 生成提示词和头像引用材料
-  -> 交给生图模型出海报
+  -> 生成头像引用材料和规范化提示词
+  -> 先得到独立内容日报
+  -> 交给生图模型出头像画像
+  -> 通过 finalize 和 validate 验收
 ```
 
 如果前一步没成功，不要跳到下一步。
@@ -112,7 +114,7 @@ node scripts\weflow-json-to-file.mjs --out "$run\members_counts.json" -- group-m
 - `reports\raw\demo-run\members_counts.json` 存在。
 - 两个文件能用记事本打开，并且不是乱码。
 
-## 第七步：生成头像画像提示词和引用材料
+## 第七步：生成头像画像提示词、引用材料和独立日报
 
 ```powershell
 $visual = "reports\visual-daily\demo-run"
@@ -120,33 +122,37 @@ New-Item -ItemType Directory -Force -Path $visual
 
 node scripts\build-sbti-image-prompt.mjs --group "目标群名" --date 2026-04-29 --messages "reports\raw\demo-run\messages.json" --members "reports\raw\demo-run\members_counts.json" --out-dir $visual
 node scripts\prepare-sbti-avatar-references.mjs --persona "$visual\sbti-persona-data.json" --members "reports\raw\demo-run\members_counts.json" --out-dir "$visual\avatar-reference"
+powershell -ExecutionPolicy Bypass -File scripts\build-avatar-reference-sheet.ps1 -AvatarDir "$visual\avatar-reference" -Out "$visual\avatar-reference\top10-avatar-reference-sheet.png"
+node scripts\sbti-avatar-pipeline.mjs prepare --run-dir "$visual" --group "目标群名" --date "2026-04-29" --interval "2026-04-29 全天" --messages "reports\raw\demo-run\messages.json" --members "reports\raw\demo-run\members_counts.json"
 ```
 
-然后把生成的提示词交给生图模型。最终 PNG 拿到后，用 `copy-generated-image.ps1` 复制到运行目录。
+`prepare` 会生成独立内容日报 PNG，并写出头像画像的规范化生图提示词。头像画像还没有完成，必须继续第八步。
 
 成功标志：
 
 - `$visual\sbti-persona-data.json` 存在。
-- `$visual\gpt-image-2-sbti-poster-prompt.md` 存在。
+- `$visual\image-model-pack\gpt-image-2-sbti-template-filled.md` 存在。
+- `$visual\image-model-pack\READY_FOR_IMAGE_GEN.md` 存在。
 - `$visual\avatar-reference\top10-avatar-reference.json` 存在。
 - `$visual\avatar-reference\top10-avatar-reference-sheet.png` 存在。
+- `$visual\generated\demo-run_content_daily.png` 存在。
 
 ## 第八步：生图和保存
 
-1. 打开生成的 `gpt-image-2-sbti-poster-prompt.md`。
+1. 打开生成的 `image-model-pack\gpt-image-2-sbti-template-filled.md`。
 2. 如果生图模型支持上传参考图，上传 `avatar-reference\top10-avatar-reference-sheet.png`。
 3. 如果不能上传参考图，确认提示词里已经写入每个人的头像特征，这种模式叫 `avatar-trait-linked`。
 4. 把提示词交给生图模型。
 5. 等模型生成 PNG。
 6. 检查图片：人物是否和头像特征有关联，文字和布局是否能看懂。
-7. 把 PNG 文件复制到运行目录：
+7. 把 PNG 文件 finalize 到运行目录和下载目录：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\copy-generated-image.ps1 `
-  -Source "你的生成图.png" `
-  -RunDir "$visual" `
-  -Name "image-model-avatar-poster.png" `
-  -DownloadName "社群头像发言海报.png"
+node scripts\sbti-avatar-pipeline.mjs finalize `
+  --run-dir "$visual" `
+  --source-generated-image "C:\Users\YOU\.codex\generated_images\...\image.png" `
+  --name "image-model-avatar-poster.png" `
+  --download-name "社群头像发言海报.png"
 ```
 
 8. 验收：
@@ -154,6 +160,8 @@ powershell -ExecutionPolicy Bypass -File scripts\copy-generated-image.ps1 `
 ```powershell
 node scripts\validate-run.mjs --run-dir "$visual" --require-download true
 ```
+
+注意：内容日报和头像画像是两张不同 PNG。不要把同一个 PNG 同时当作日报和头像终稿。
 
 推荐：优先使用 ChatGPT / GPT Image 2 或同等级模型。不要把 HTML 截图或随机人物图当作最终生图成果。
 

@@ -22,6 +22,7 @@
 - SBTI 风格成员画像
 - 生图模型提示词包
 - 可验收的 PNG 交付流程
+- 头像海报与社群日报的双交付流程
 
 这个金苹果的核心目标是：把群聊里的高价值讨论、活跃成员和群体氛围，整理成一张能被转发、能被复盘、也能带来情绪价值的视觉海报。
 
@@ -39,6 +40,7 @@
 ```powershell
 node scripts\doctor.mjs
 node weflow-cli.mjs help
+node scripts\sbti-avatar-pipeline.mjs --help
 ```
 
 ## 仓库结构
@@ -77,6 +79,15 @@ WeFlow 提供本地微信聊天记录查看、分析、导出和 HTTP API 能力
 如果生图工具支持上传参考图，优先上传 `avatar-reference/top10-avatar-reference-sheet.png`。如果不支持上传参考图，就使用 `avatar-trait-linked` 方式：先检查头像表，再把每个人头像的颜色、主体、姿态、背景和符号写入提示词。
 
 不能把随机人物图、HTML 截图或确定性兜底图当作“生图模型头像关联成品”。
+
+## 双交付约束
+
+当一次任务同时要求“头像画像”和“日报/总结图”时，本仓库按两张独立 PNG 处理：
+
+- `contentDaily`：社群内容日报，使用本地脚本渲染中文密集信息。
+- `imageModelFinal`：SBTI/头像画像，必须来自 `.codex/generated_images` 的生图结果并经过 `finalize`。
+
+`scripts/sbti-avatar-pipeline.mjs prepare` 会先生成独立日报图和规范化生图提示词；头像图必须在生图完成后通过 `finalize` 复制到项目目录和下载目录。`validate-run.mjs` 会拒绝把同一个 PNG 同时当作日报和头像终稿。
 
 ## 隐私边界
 
