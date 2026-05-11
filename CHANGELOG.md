@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 - 2026-05-11
+
+- Reject non-final SBTI/avatar output modes during validation so `reference-image-conditioned` and `avatar-trait-linked` drafts cannot pass as final deliverables.
+- Require SBTI/avatar final validation to include `imageModelFinal` evidence from `.codex/generated_images`.
+- Reject path-like `finalize --name` and `--download-name` values so generated/download copies cannot escape their intended folders.
+
 ## 0.2.1 - 2026-05-11
 
 - Allow `sbti-avatar-pipeline.mjs prepare` to run in `reference-image-conditioned` mode without `avatar-traits.json` when the avatar reference sheet will be uploaded to the image model.

@@ -62,23 +62,21 @@ if (fs.existsSync(manifestPath)) {
     /sbti/i.test(String(manifest.posterType || "")) ||
     /SBTI/i.test(String(manifest.title || ""))
   );
+  const finalRemixModes = new Set(["reference-image-conditioned/final", "avatar-trait-linked/final"]);
   const acceptedModes = new Set([
     "reference-image-conditioned/final",
     "avatar-trait-linked/final",
     "awaiting-image-model",
     "deterministic-avatar-linked/fallback",
-    "reference-image-conditioned",
-    "avatar-trait-linked",
-    "deterministic-avatar-linked"
   ]);
   check("outputMode recorded", Boolean(mode), mode || "missing outputMode");
   check("outputMode accepted", acceptedModes.has(mode), mode);
   check("deterministic output not mislabeled final", mode !== "deterministic-avatar-linked/final", mode);
   if (isSbtiOrAvatarPoster) {
+    check("SBTI/avatar poster mode is final", finalRemixModes.has(mode), mode);
     check("SBTI/avatar poster is not deterministic fallback final", !mode.startsWith("deterministic-avatar-linked"), mode);
   }
   if (requiresAvatarRemix) {
-    const finalRemixModes = new Set(["reference-image-conditioned/final", "avatar-trait-linked/final"]);
     check("avatar remix mode is final", finalRemixModes.has(mode), mode);
     check("deterministic fallback blocked for avatar remix", !mode.startsWith("deterministic-avatar-linked"), mode);
   }

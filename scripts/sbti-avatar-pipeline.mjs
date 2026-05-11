@@ -105,6 +105,25 @@ function safeFileName(value) {
     .slice(0, 80) || "weflow";
 }
 
+function assertSafePngFileName(value, label) {
+  const name = clean(value);
+  if (!name || !/\.png$/i.test(name)) {
+    fail(`${label} must be a PNG filename`, { [label]: value });
+  }
+  if (
+    path.isAbsolute(name) ||
+    name !== path.basename(name) ||
+    /[\\/:*?"<>|]/.test(name) ||
+    name.includes("/") ||
+    name.includes("\\") ||
+    name.split(/[\\/]/).includes("..") ||
+    name === "." ||
+    name === ".."
+  ) {
+    fail(`${label} must be a plain filename, not a path`, { [label]: value });
+  }
+}
+
 const SBTI_TYPES = {
   CTRL: { code: "CTRL", name: "拿捏者", hint: "掌控节奏，能把讨论拉回主线" },
   SAGE: { code: "SAGE", name: "智者", hint: "冷静判断，输出分析和标准" },
@@ -644,9 +663,8 @@ function finalize() {
   if (!/[\\\/]\.codex[\\\/]generated_images[\\\/]/i.test(sourceFile)) {
     fail("source-generated-image must point to .codex/generated_images", { source: sourceFile });
   }
-  if (!/^.+\.png$/i.test(name) || !/^.+\.png$/i.test(downloadName)) {
-    fail("--name and --download-name must be PNG filenames");
-  }
+  assertSafePngFileName(name, "name");
+  assertSafePngFileName(downloadName, "downloadName");
   if (!new Set(["avatar-trait-linked/final", "reference-image-conditioned/final"]).has(outputMode)) {
     fail("finalize output mode must be reference-image-conditioned/final or avatar-trait-linked/final", { outputMode });
   }
