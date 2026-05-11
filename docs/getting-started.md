@@ -123,10 +123,10 @@ New-Item -ItemType Directory -Force -Path $visual
 node scripts\build-sbti-image-prompt.mjs --group "目标群名" --date 2026-04-29 --messages "reports\raw\demo-run\messages.json" --members "reports\raw\demo-run\members_counts.json" --out-dir $visual
 node scripts\prepare-sbti-avatar-references.mjs --persona "$visual\sbti-persona-data.json" --members "reports\raw\demo-run\members_counts.json" --out-dir "$visual\avatar-reference"
 powershell -ExecutionPolicy Bypass -File scripts\build-avatar-reference-sheet.ps1 -AvatarDir "$visual\avatar-reference" -Out "$visual\avatar-reference\top10-avatar-reference-sheet.png"
-node scripts\sbti-avatar-pipeline.mjs prepare --run-dir "$visual" --group "目标群名" --date "2026-04-29" --interval "2026-04-29 全天" --messages "reports\raw\demo-run\messages.json" --members "reports\raw\demo-run\members_counts.json"
+node scripts\sbti-avatar-pipeline.mjs prepare --run-dir "$visual" --group "目标群名" --date "2026-04-29" --interval "2026-04-29 全天" --messages "reports\raw\demo-run\messages.json" --members "reports\raw\demo-run\members_counts.json" --linkage-mode reference-image-conditioned
 ```
 
-`prepare` 会生成独立内容日报 PNG，并写出头像画像的规范化生图提示词。头像画像还没有完成，必须继续第八步。
+`prepare` 会生成独立内容日报 PNG，并写出头像画像的规范化生图提示词。`reference-image-conditioned` 模式不需要 `avatar-traits.json`，但第八步必须把头像参考表上传给生图模型。头像画像还没有完成，必须继续第八步。
 
 成功标志：
 

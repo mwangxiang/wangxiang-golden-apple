@@ -58,7 +58,7 @@ node scripts\weflow-json-to-file.mjs --out "$raw\members_counts.json" -- group-m
 node scripts\build-sbti-image-prompt.mjs --group "目标群名" --date YYYY-MM-DD --messages "$raw\messages.json" --members "$raw\members_counts.json" --out-dir "$visual"
 node scripts\prepare-sbti-avatar-references.mjs --persona "$visual\sbti-persona-data.json" --members "$raw\members_counts.json" --out-dir "$visual\avatar-reference"
 powershell -ExecutionPolicy Bypass -File scripts\build-avatar-reference-sheet.ps1 -AvatarDir "$visual\avatar-reference" -Out "$visual\avatar-reference\top10-avatar-reference-sheet.png"
-node scripts\sbti-avatar-pipeline.mjs prepare --run-dir "$visual" --group "目标群名" --date YYYY-MM-DD --interval "YYYY-MM-DD 全天" --messages "$raw\messages.json" --members "$raw\members_counts.json"
+node scripts\sbti-avatar-pipeline.mjs prepare --run-dir "$visual" --group "目标群名" --date YYYY-MM-DD --interval "YYYY-MM-DD 全天" --messages "$raw\messages.json" --members "$raw\members_counts.json" --linkage-mode reference-image-conditioned
 ```
 
 必须检查：

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 - 2026-05-11
+
+- Allow `sbti-avatar-pipeline.mjs prepare` to run in `reference-image-conditioned` mode without `avatar-traits.json` when the avatar reference sheet will be uploaded to the image model.
+- Record the selected avatar linkage mode in the manifest and image-model job metadata.
+- Infer the matching final output mode during `finalize` from the prepared linkage mode.
+
 ## 0.2.0 - 2026-05-11
 
 - Add the SBTI/avatar pipeline entrypoint for prepare, finalize, and validate.

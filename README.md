@@ -76,7 +76,7 @@ WeFlow 提供本地微信聊天记录查看、分析、导出和 HTTP API 能力
 
 最终海报建议使用 ChatGPT / GPT Image 2 或同等级图像生成模型完成。
 
-如果生图工具支持上传参考图，优先上传 `avatar-reference/top10-avatar-reference-sheet.png`。如果不支持上传参考图，就使用 `avatar-trait-linked` 方式：先检查头像表，再把每个人头像的颜色、主体、姿态、背景和符号写入提示词。
+如果生图工具支持上传参考图，优先上传 `avatar-reference/top10-avatar-reference-sheet.png`；`prepare` 在没有 `avatar-traits.json` 时会默认使用 `reference-image-conditioned` 模式。如果不支持上传参考图，就显式使用 `--linkage-mode avatar-trait-linked`，先检查头像表，再把每个人头像的颜色、主体、姿态、背景和符号写入提示词。
 
 不能把随机人物图、HTML 截图或确定性兜底图当作“生图模型头像关联成品”。
 

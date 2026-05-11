@@ -32,12 +32,12 @@ Never put the daily report inside the avatar/SBTI poster. A single combined PNG 
 Unique entrypoint for SBTI/avatar portrait work:
 
 ```powershell
-node scripts\sbti-avatar-pipeline.mjs prepare --run-dir "reports\visual-daily\RUN" --group "Group Name" --date "YYYY-MM-DD" --interval "HH:mm-HH:mm"
+node scripts\sbti-avatar-pipeline.mjs prepare --run-dir "reports\visual-daily\RUN" --group "Group Name" --date "YYYY-MM-DD" --interval "HH:mm-HH:mm" --linkage-mode reference-image-conditioned
 node scripts\sbti-avatar-pipeline.mjs finalize --run-dir "reports\visual-daily\RUN" --source-generated-image "C:\Users\YOU\.codex\generated_images\...\image.png" --name "final-sbti-avatar.png" --download-name "shareable-file-name.png"
 node scripts\sbti-avatar-pipeline.mjs validate --run-dir "reports\visual-daily\RUN"
 ```
 
-Use this entrypoint instead of calling local poster renderers directly. `prepare` never creates a final avatar poster; it produces the canonical image-model prompt, `READY_FOR_IMAGE_GEN.md`, and the separate content daily PNG when message/member sources are available.
+Use this entrypoint instead of calling local poster renderers directly. `prepare` never creates a final avatar poster; it produces the canonical image-model prompt, `READY_FOR_IMAGE_GEN.md`, and the separate content daily PNG when message/member sources are available. Use `reference-image-conditioned` when the avatar sheet can be uploaded to the image model; use `avatar-trait-linked` only when concrete per-avatar traits are available and image upload is unavailable.
 
 ## Workflow
 

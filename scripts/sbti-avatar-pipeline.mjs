@@ -120,6 +120,19 @@ const SBTI_TYPES = {
   HEAL: { code: "HEAL", name: "治愈者", hint: "语气温和，提供支持和稳定感" },
 };
 
+const LINKAGE_MODES = new Set(["reference-image-conditioned", "avatar-trait-linked"]);
+
+function normalizeLinkageMode(value) {
+  const mode = clean(value);
+  if (!LINKAGE_MODES.has(mode)) {
+    fail("Invalid linkage mode", {
+      linkageMode: mode,
+      allowed: [...LINKAGE_MODES],
+    });
+  }
+  return mode;
+}
+
 function textForType(person) {
   return [
     person.name,
@@ -207,8 +220,48 @@ function loadPeople(persona, traits) {
   });
 }
 
-function buildPrompt({ persona, traits, group, date, interval, people: suppliedPeople = null }) {
-  const people = suppliedPeople || diversifyPeopleTypes(loadPeople(persona, traits));
+function loadReferencePeople(persona, avatarManifest) {
+  const avatarByRank = new Map((avatarManifest || []).map((item) => [Number(item.rank), item]));
+  return (persona.people || []).slice(0, 10).map((person, index) => {
+    const rank = Number(person.rank || index + 1);
+    const avatarReference = avatarByRank.get(rank) || null;
+    return { ...person, rank, avatarReference };
+  });
+}
+
+function avatarInstruction(person, linkageMode) {
+  if (linkageMode === "avatar-trait-linked") {
+    return `头像视觉特征：真实头像显示 ${traitText(person.avatarTrait)}。必须保留这些身份线索并扩写成更精致的半身像或拟人角色，不要直接贴原头像。`;
+  }
+  const ref = person.avatarReference || {};
+  const status = clean(ref.avatarStatus || "reference-sheet");
+  const file = clean(ref.avatarFile || "");
+  const note = status && status !== "ok" ? ` 当前头像状态：${status}，如参考图中缺失或不可用，不要编造无关随机人物。` : "";
+  const source = file ? `参考文件：${file}。` : "参考上传的 top10-avatar-reference-sheet.png。";
+  return `头像参考：第${person.rank}张人物卡必须对应头像参考表中的编号 ${person.rank}。${source}${note}基于该真实头像参考二次创作，保留主体、配色、姿态、背景和符号线索，不要直接贴原头像。`;
+}
+
+function avatarLinkageSection(linkageMode) {
+  if (linkageMode === "avatar-trait-linked") {
+    return `本提示词已经把真实微信头像识别为文字 traits。请根据每张卡片的“头像视觉特征”生成二创主视觉：
+- 不要直接粘贴原头像
+- 不要生成无关随机人物
+- 不要忽略动物、面具、服装、道具、背景、颜色等原头像核心特征
+- 如果某个头像是动物、风景、符号或物品，可以拟人化，但必须保留其原始视觉符号`;
+  }
+  return `请将 avatar-reference/top10-avatar-reference-sheet.png 与本提示词一起提供给图像模型。每张人物卡必须按编号绑定参考头像：
+- 第1张卡使用头像参考表编号 1，第2张卡使用编号 2，以此类推
+- 不要直接粘贴原头像；要把参考头像扩写为更精致的半身像或拟人角色
+- 不要生成与参考头像无关的随机人物
+- 如果参考头像是动物、风景、符号或物品，可以拟人化，但必须保留其原始视觉符号`;
+}
+
+function buildPrompt({ persona, traits, group, date, interval, linkageMode, people: suppliedPeople = null }) {
+  const people = suppliedPeople || diversifyPeopleTypes(
+    linkageMode === "avatar-trait-linked"
+      ? loadPeople(persona, traits)
+      : loadReferencePeople(persona, [])
+  );
   const cards = people.map((person) => {
     const type = person.type || {};
     const terms = (person.terms || []).slice(0, 4).map((item) => clean(item.term || item)).filter(Boolean).join("、") || "群内互动";
@@ -216,7 +269,7 @@ function buildPrompt({ persona, traits, group, date, interval, people: suppliedP
 - 姓名：${clean(person.name)}
 - 发言数：${person.count}条（占比${normalizePercent(person.percent)}）
 - SBTI类型：${clean(type.code)} · ${clean(type.name)}
-- 头像视觉特征：真实头像显示 ${traitText(person.avatarTrait)}。必须保留这些身份线索并扩写成更精致的半身像或拟人角色，不要直接贴原头像。
+- ${avatarInstruction(person, linkageMode)}
 - 插画场景：${clean(person.scene || `结合头像特征和 ${terms} 话题，生成温暖、专业、可分享的半身插画场景。`)}
 - 性格标签：${short(person.description, 110)} 关键词：${terms}。金句：「${short(person.quote, 42)}」`;
   }).join("\n\n");
@@ -237,11 +290,7 @@ function buildPrompt({ persona, traits, group, date, interval, people: suppliedP
 - SBTI 类型也必须多样：Top10 至少 5 种类型，同一类型最多出现 2 次；不要把多数人都标成 NERD 技术宅
 
 【头像链路】
-本提示词已经把真实微信头像识别为文字 traits。请根据每张卡片的“头像视觉特征”生成二创主视觉：
-- 不要直接粘贴原头像
-- 不要生成无关随机人物
-- 不要忽略动物、面具、服装、道具、背景、颜色等原头像核心特征
-- 如果某个头像是动物、风景、符号或物品，可以拟人化，但必须保留其原始视觉符号
+${avatarLinkageSection(linkageMode)}
 
 【10张人物卡片】
 ${cards}
@@ -264,7 +313,7 @@ ${cards}
 `;
 }
 
-function updateManifestForPrepare({ manifestPath, group, date, interval, runName, messages, members }) {
+function updateManifestForPrepare({ manifestPath, group, date, interval, linkageMode, runName, messages, members }) {
   const existing = fs.existsSync(manifestPath) ? readJson(manifestPath) : {};
   const manifest = {
     ...existing,
@@ -289,7 +338,13 @@ function updateManifestForPrepare({ manifestPath, group, date, interval, runName
       contentDaily: true,
     },
     posterType: "SBTI-avatar-portrait",
+    linkageMode,
     outputMode: "awaiting-image-model",
+    imageModel: {
+      ...(existing.imageModel || {}),
+      linkageMode,
+      status: "awaiting-image-model",
+    },
     deliverableContract: {
       contentDaily: "separate local PNG generated during prepare",
       avatarPoster: "separate image-model PNG accepted only after finalize",
@@ -379,10 +434,12 @@ function prepare() {
   const personaPath = path.join(runDir, "sbti-persona-data.json");
   const traitsPath = path.join(runDir, "avatar-reference", "avatar-traits.json");
   const avatarSheetPath = path.join(runDir, "avatar-reference", "top10-avatar-reference-sheet.png");
+  const avatarManifestPath = path.join(runDir, "avatar-reference", "top10-avatar-reference.json");
   const promptPath = path.join(runDir, "image-model-pack", "gpt-image-2-sbti-template-filled.md");
   const readyPath = path.join(runDir, "image-model-pack", "READY_FOR_IMAGE_GEN.md");
   const jobPath = path.join(runDir, "image-model-pack", "reference-conditioned-job.json");
   const manifestPath = path.join(runDir, "visual-daily-manifest.json");
+  const linkageMode = normalizeLinkageMode(arg("linkage-mode", fs.existsSync(traitsPath) ? "avatar-trait-linked" : "reference-image-conditioned"));
 
   assertFile(personaPath, "sbti-persona-data.json");
   if (!fs.existsSync(avatarSheetPath)) {
@@ -397,7 +454,22 @@ Do not continue with nickname-only or random generated portraits.
 `);
     fail("Missing top10-avatar-reference-sheet.png", { next: relFromToolRoot(needSheetPath) });
   }
-  if (!fs.existsSync(traitsPath)) {
+  if (linkageMode === "reference-image-conditioned" && !fs.existsSync(avatarManifestPath)) {
+    const needManifestPath = path.join(runDir, "avatar-reference", "NEEDS_AVATAR_REFERENCE_MANIFEST.md");
+    writeText(needManifestPath, `# NEEDS_AVATAR_REFERENCE_MANIFEST
+
+Missing:
+${relFromToolRoot(avatarManifestPath)}
+
+Reference-image-conditioned mode needs the avatar manifest produced by:
+
+\`\`\`powershell
+node scripts\\prepare-sbti-avatar-references.mjs --persona "${relFromToolRoot(personaPath)}" --members "reports/raw/RUN/members_counts.json" --out-dir "${relFromToolRoot(path.join(runDir, "avatar-reference"))}"
+\`\`\`
+`);
+    fail("Missing top10-avatar-reference.json", { next: relFromToolRoot(needManifestPath) });
+  }
+  if (linkageMode === "avatar-trait-linked" && !fs.existsSync(traitsPath)) {
     const needTraitsPath = path.join(runDir, "avatar-reference", "NEEDS_AVATAR_TRAITS.md");
     writeText(needTraitsPath, `# NEEDS_AVATAR_TRAITS
 
@@ -436,15 +508,20 @@ Do not continue with local poster renderers as final output.
   }
 
   const persona = readJson(personaPath);
-  const traits = readJson(traitsPath);
-  const people = diversifyPeopleTypes(loadPeople(persona, traits));
+  const traits = fs.existsSync(traitsPath) ? readJson(traitsPath) : { people: [] };
+  const avatarManifest = fs.existsSync(avatarManifestPath) ? readJson(avatarManifestPath) : [];
+  const people = diversifyPeopleTypes(
+    linkageMode === "avatar-trait-linked"
+      ? loadPeople(persona, traits)
+      : loadReferencePeople(persona, avatarManifest)
+  );
   for (const person of people) {
     assertNoMojibake(person.name, `person ${person.rank} name`);
     assertNoMojibake(person.type?.name || "", `person ${person.rank} SBTI type`);
   }
 
   const contentDaily = buildContentDaily({ manifestPath, group, interval });
-  const prompt = buildPrompt({ persona, traits, group, date, interval, people });
+  const prompt = buildPrompt({ persona, traits, group, date, interval, linkageMode, people });
   writeText(promptPath, prompt);
   writeJson(jobPath, {
     generatedAt: new Date().toISOString(),
@@ -452,8 +529,10 @@ Do not continue with local poster renderers as final output.
     groupName: group,
     date,
     interval,
+    linkageMode,
     avatarSheet: relFromToolRoot(avatarSheetPath),
-    avatarTraits: relFromToolRoot(traitsPath),
+    avatarManifest: relFromToolRoot(avatarManifestPath),
+    avatarTraits: fs.existsSync(traitsPath) ? relFromToolRoot(traitsPath) : "",
     promptPath: relFromToolRoot(promptPath),
     people: people.map((person) => ({
       rank: person.rank,
@@ -462,7 +541,8 @@ Do not continue with local poster renderers as final output.
       percent: normalizePercent(person.percent),
       type: person.type,
       quote: person.quote,
-      avatarTraits: person.avatarTrait.avatarTraits,
+      avatarReference: person.avatarReference || null,
+      avatarTraits: person.avatarTrait?.avatarTraits || null,
     })),
     nextRequiredStep: "Call image_gen or an image API with the canonical prompt. Do not run local renderers as final.",
   });
@@ -479,6 +559,8 @@ ${relFromToolRoot(avatarSheetPath)}
 
 Required next step:
 Use the image model to generate the final SBTI/avatar poster from the canonical prompt.
+Linkage mode: ${linkageMode}
+${linkageMode === "reference-image-conditioned" ? "Upload the avatar reference sheet with this prompt." : "Use the concrete avatar traits embedded in this prompt."}
 
 Separate deliverables:
 - Content daily poster already generated:
@@ -495,7 +577,7 @@ Blocked actions:
 After image generation, run:
 
 \`\`\`powershell
-node scripts\\sbti-avatar-pipeline.mjs finalize --run-dir "${relFromToolRoot(runDir)}" --source-generated-image "C:\\Users\\YOU\\.codex\\generated_images\\...\\image.png" --name "final-sbti-avatar.png" --download-name "下载文件名.png"
+node scripts\\sbti-avatar-pipeline.mjs finalize --run-dir "${relFromToolRoot(runDir)}" --source-generated-image "C:\\Users\\YOU\\.codex\\generated_images\\...\\image.png" --name "final-sbti-avatar.png" --download-name "下载文件名.png" --output-mode "${linkageMode}/final"
 node scripts\\sbti-avatar-pipeline.mjs validate --run-dir "${relFromToolRoot(runDir)}"
 \`\`\`
 `);
@@ -505,6 +587,7 @@ node scripts\\sbti-avatar-pipeline.mjs validate --run-dir "${relFromToolRoot(run
     group,
     date,
     interval,
+    linkageMode,
     runName,
     messages: contentDaily.messages,
     members: contentDaily.members,
@@ -533,6 +616,7 @@ node scripts\\sbti-avatar-pipeline.mjs validate --run-dir "${relFromToolRoot(run
     },
     avatarPoster: {
       status: "awaiting-image-model",
+      linkageMode,
       requiredFinalizeSource: ".codex/generated_images PNG",
     },
     prompt: relFromToolRoot(promptPath),
@@ -547,7 +631,13 @@ function finalize() {
   const source = arg("source-generated-image");
   const name = clean(arg("name", "final-sbti-avatar.png"));
   const downloadName = clean(arg("download-name", name));
-  const outputMode = clean(arg("output-mode", "avatar-trait-linked/final"));
+  const manifestPath = path.join(runDir, "visual-daily-manifest.json");
+  const manifest = fs.existsSync(manifestPath) ? readJson(manifestPath) : {};
+  const preparedLinkageMode = clean(manifest.linkageMode || manifest.imageModel?.linkageMode || "avatar-trait-linked");
+  const defaultOutputMode = preparedLinkageMode === "reference-image-conditioned"
+    ? "reference-image-conditioned/final"
+    : "avatar-trait-linked/final";
+  const outputMode = clean(arg("output-mode", defaultOutputMode));
   if (!source) fail("finalize requires --source-generated-image");
   const sourceFile = path.resolve(source);
   assertFile(sourceFile, "source generated image");
@@ -568,8 +658,6 @@ function finalize() {
   copyFile(sourceFile, projectFile);
   copyFile(sourceFile, downloadFile);
 
-  const manifestPath = path.join(runDir, "visual-daily-manifest.json");
-  const manifest = fs.existsSync(manifestPath) ? readJson(manifestPath) : {};
   const projectRel = relFromToolRoot(projectFile);
   const downloadRel = relFromToolRoot(downloadFile);
   const projectOutputs = new Set([...(manifest.outputs?.project || []), projectRel]);
@@ -584,11 +672,17 @@ function finalize() {
       sbtiPoster: true,
     },
     posterType: "SBTI-avatar-portrait",
+    linkageMode: outputMode.replace(/\/final$/, ""),
     outputMode,
     outputs: {
       ...(manifest.outputs || {}),
       project: [...projectOutputs],
       download: [...downloadOutputs],
+    },
+    imageModel: {
+      ...(manifest.imageModel || {}),
+      linkageMode: outputMode.replace(/\/final$/, ""),
+      status: "finalized",
     },
     imageModelFinal: {
       sourceGeneratedImage: sourceFile,
@@ -627,11 +721,12 @@ if (!["prepare", "finalize", "validate", "help"].includes(phase)) {
 }
 if (phase === "help" || hasFlag("help")) {
   console.log(`Usage:
-  node scripts/sbti-avatar-pipeline.mjs prepare --run-dir reports/visual-daily/RUN --group "群名" --date YYYY-MM-DD --interval "HH:mm-HH:mm"
+  node scripts/sbti-avatar-pipeline.mjs prepare --run-dir reports/visual-daily/RUN --group "群名" --date YYYY-MM-DD --interval "HH:mm-HH:mm" [--linkage-mode reference-image-conditioned|avatar-trait-linked]
   node scripts/sbti-avatar-pipeline.mjs finalize --run-dir reports/visual-daily/RUN --source-generated-image C:\\Users\\...\\.codex\\generated_images\\...\\image.png --name final.png --download-name final.png
   node scripts/sbti-avatar-pipeline.mjs validate --run-dir reports/visual-daily/RUN
 
 Rules:
+  prepare defaults to reference-image-conditioned when avatar-traits.json is absent.
   prepare never creates a final avatar poster.
   prepare creates a separate content daily PNG when message/member sources are available.
   avatar poster and content daily poster must be two different deliverables.

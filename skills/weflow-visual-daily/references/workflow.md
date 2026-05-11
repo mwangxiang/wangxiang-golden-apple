@@ -45,7 +45,8 @@ node scripts\sbti-avatar-pipeline.mjs prepare `
   --run-dir "reports\visual-daily\RUN" `
   --group "Group Name" `
   --date "YYYY-MM-DD" `
-  --interval "HH:mm-HH:mm"
+  --interval "HH:mm-HH:mm" `
+  --linkage-mode reference-image-conditioned
 ```
 
 This creates:
@@ -58,7 +59,7 @@ generated\*_content_daily.png
 downloads\weflow-visual-daily-RUN\*_content_daily.png
 ```
 
-The content daily PNG created in `prepare` is already a separate deliverable. The avatar/SBTI poster is still pending until the image-model result is finalized from `.codex\generated_images`.
+The content daily PNG created in `prepare` is already a separate deliverable. The avatar/SBTI poster is still pending until the image-model result is finalized from `.codex\generated_images`. In `reference-image-conditioned` mode, upload `top10-avatar-reference-sheet.png` with the prompt; switch to `avatar-trait-linked` only when image upload is unavailable and `avatar-traits.json` has been filled.
 
 After a real generated image exists under `.codex\generated_images`, finalize:
 
